@@ -49,9 +49,6 @@ logs/
 # Model checkpoints and weights
 *.h5
 *.hdf5
-*.ckpt
-*.pth
-*.pt
 models/
 saved_models/
 

@@ -103,16 +103,31 @@ class UpSamplingDecoder(nn.Module):
 
 class AutoEncoder(nn.Module):
 
-    def __init__(self, in_channels = 3, latent_dim = 128, bottleneck_dim = 16):
+    def __init__(self, in_channels=3, latent_dim=128, bottleneck_dim=16):
         super().__init__()
         self.encoder = DownsamplingEncoder(in_channels, latent_dim)
+        self.latent_dim = latent_dim
+
+        # True bottleneck - flatten spatial features and compress to bottleneck_dim
+        # After encoder: (B, latent_dim, 7, 7) for 224x224 input
+        self.fc_encode = nn.Linear(latent_dim * 7 * 7, bottleneck_dim)
+        self.fc_decode = nn.Linear(bottleneck_dim, latent_dim * 7 * 7)
+
         self.decoder = UpSamplingDecoder(latent_dim, in_channels)
 
-
     def forward(self, x):
-        z = self.encoder(x)  # Shape: (B, latent_dim, 1, 1)
-        recon = self.decoder(z)
-        return recon, z
+        z = self.encoder(x)  # Shape: (B, latent_dim, 7, 7)
+
+        # Flatten and compress through bottleneck
+        z_flat = z.view(z.size(0), -1)  # (B, latent_dim * 49)
+        z_bottleneck = self.fc_encode(z_flat)  # (B, bottleneck_dim) - TRUE bottleneck
+
+        # Decode from bottleneck
+        z_decoded = self.fc_decode(z_bottleneck)  # (B, latent_dim * 49)
+        z_reshaped = z_decoded.view(-1, self.latent_dim, 7, 7)  # (B, latent_dim, 7, 7)
+
+        recon = self.decoder(z_reshaped)
+        return recon, z_bottleneck
     
 
 def train_autoencoder(model, train_loader, test_loader, num_epochs=30, lr = 1e-3, device=DEVICE, save_dir='./checkpoints', model_name="Autoencoder"):
