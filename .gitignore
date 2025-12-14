@@ -52,7 +52,6 @@ logs/
 *.ckpt
 *.pth
 *.pt
-checkpoints/
 models/
 saved_models/
 
